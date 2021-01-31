@@ -130,25 +130,26 @@ MODE = 0
 
 button_count = 0
 
-modes = [
-    random_twinkle,
-    rainbow_spin,
-]
-
 while True:
 
     if button.value() == 1:
         if button_count > BUTTON_MIN_COUNT:
             if button.value() == 1:
                 MODE += 1
-                if MODE >= len(modes):
+                if MODE >= 2:
                     MODE = 0
                 change_mode(ar)
         button_count += 1
     else: 
         button_count = 0
 
-    modes[MODE](ar)
+    if MODE == 0:
+        random_twinkle(ar)
+    elif MODE == 1:
+        rainbow_spin(ar)
+    else:
+        print("Unknown Mode")
+
     
     if button.value() == 0:
         button_count = 0
