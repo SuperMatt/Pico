@@ -1,4 +1,3 @@
-
 import array, time, random
 from machine import Pin
 import rp2
@@ -13,6 +12,7 @@ ONE_FOUR = int(MAX_BRIGHT/4)
 TWINKLE_TIME = 100
 BUTTON_MIN_TIME = 500
 BUTTON_MIN_COUNT = int(BUTTON_MIN_TIME/TWINKLE_TIME)
+MAX_TWINKLES = 4
 
 def random_color():
     red = random.randrange(0, MAX_BRIGHT, 1)
@@ -45,7 +45,7 @@ def change_mode(ar):
         sm.put(ar, 8)
         time.sleep_ms(200)
 
-def rainbow_spin(ar):
+def rainbow_spin(ar, state):
 
     colors = [
         (MAX_BRIGHT, 0, 0),
@@ -94,12 +94,40 @@ def rainbow_spin(ar):
             ar[i] = green_b + red_b + blue_b
 
     sm.put(ar, 8)
+    return state
 
-def random_twinkle(ar):
+def random_twinkle(ar, state):
     led = random.randrange(0, NUM_LEDS, 1)
     color = random_color()
     ar[led] = color
     sm.put(ar,8)
+    return state
+
+def on_off_twinkle(ar, state):
+    state_name = "on_off_twinkle"
+    if not state_name in state:
+        state[state_name] = []
+        
+
+    for led in state[state_name]:
+        ar[led["led"]] = led["color"]
+
+    if len(state[state_name]) <= MAX_TWINKLES:
+        off_lights = []
+        for led in range(NUM_LEDS):
+            if ar[led] == 0:
+                off_lights.append(led)
+
+        random_light = random.randrange(0, len(off_lights), 1)
+
+        color = random_color()
+
+        ar[random_light] = color
+        state[state_name].append({"led": random_light, "color": color})
+    
+    sm.put(ar)
+
+    return state
 
 
 @asm_pio(sideset_init=PIO.OUT_LOW, out_shiftdir=PIO.SHIFT_LEFT, autopull=True, pull_thresh=24)
@@ -130,25 +158,28 @@ MODE = 0
 
 button_count = 0
 
+modes = [
+    random_twinkle,
+    rainbow_spin,
+    on_off_twinkle,
+]
+
+state = {}
+
 while True:
 
     if button.value() == 1:
         if button_count > BUTTON_MIN_COUNT:
             if button.value() == 1:
                 MODE += 1
-                if MODE >= 2:
+                if MODE >= len(modes):
                     MODE = 0
                 change_mode(ar)
         button_count += 1
     else: 
         button_count = 0
 
-    if MODE == 0:
-        random_twinkle(ar)
-    elif MODE == 1:
-        rainbow_spin(ar)
-    else:
-        print("Unknown Mode")
+    state = modes[MODE](ar, state)
 
     
     if button.value() == 0:
