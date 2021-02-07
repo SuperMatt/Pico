@@ -14,6 +14,26 @@ BUTTON_MIN_TIME = 500
 BUTTON_MIN_COUNT = int(BUTTON_MIN_TIME/TWINKLE_TIME)
 MAX_TWINKLES = 4
 
+def load_state(ar, state, state_name):
+    if state_name in state.keys():
+        for i in range(NUM_LEDS):
+            ar[i] = state[state_name]["leds"][i]
+
+    return ar
+
+def save_state(ar, state, state_name):
+    if state_name not in state.keys():
+        state[state_name] = {
+            "leds": []
+        }
+        for i in range(NUM_LEDS):
+            state[state_name]["leds"].append(0)
+
+    for i in range(NUM_LEDS):
+        state[state_name]["leds"][i] = ar[i]
+
+    return state
+
 def random_color():
     red = random.randrange(0, MAX_BRIGHT, 1)
     red_b = red<<8
@@ -105,14 +125,17 @@ def random_twinkle(ar, state):
 
 def on_off_twinkle(ar, state):
     state_name = "on_off_twinkle"
-    if not state_name in state:
-        state[state_name] = []
-        
 
-    for led in state[state_name]:
-        ar[led["led"]] = led["color"]
+    ar = load_state(ar, state, state_name)
 
-    if len(state[state_name]) <= MAX_TWINKLES:
+    num_lit = 0
+    lit_leds = []
+    for i in range(NUM_LEDS):
+        if ar[i] != 0:
+            num_lit +=1
+            lit_leds.append(i)
+
+    if num_lit < MAX_TWINKLES:
         off_lights = []
         for led in range(NUM_LEDS):
             if ar[led] == 0:
@@ -123,8 +146,11 @@ def on_off_twinkle(ar, state):
         color = random_color()
 
         ar[random_light] = color
-        state[state_name].append({"led": random_light, "color": color})
+    else:
+        remove = random.choice(lit_leds)
+        ar[remove] = 0
     
+    state = save_state(ar, state, state_name)
     sm.put(ar)
 
     return state
@@ -165,6 +191,7 @@ modes = [
 ]
 
 state = {}
+
 
 while True:
 
